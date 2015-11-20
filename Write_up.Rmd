@@ -1,0 +1,150 @@
+---
+Title: Write up for the final project for Coursera course Practical ML
+Output: html_document containing notes to assist the pmlcode.R
+---
+
+Introduction.
+
+Data background and data source: 
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+The data for this project come from this source: <http://groupware.les.inf.puc-rio.br/har>. 
+
+The training data for this project are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The test data are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <http://groupware.les.inf.puc-rio.br/har> (see the section on the Weight Lifting Exercise Dataset). 
+
+#Brief description of the analysis performed step by step. 
+
+We start with loading the necessary libraries:
+
+```{r}
+set.seed(1984)
+library(caret)
+library(rpart)
+library(lattice)
+library(ggplot2)
+library(rattle)
+library(randomForest)
+
+```
+#Step 1: Load the data and perform initial exploratory analysis
+
+```{r}
+training =  read.csv(file = "pml-training.csv", header = TRUE, na.strings=c("NA","#DIV/0!",""))
+testing =  read.csv(file = "pml-testing.csv", header = TRUE, na.strings=c("NA","#DIV/0!",""))
+
+str(training)
+summary(training$classe)
+summary(training$user_name)
+summary(training$cvtd_timestamp)
+```
+I have omitted the report on each and every variable for the purpose of keeping the write up leaner.
+
+#Step 2: Partition the data 
+```{r}
+inTrain = createDataPartition(y = training$classe, p = 0.6, list = FALSE)
+training1 = training[inTrain, ]
+testing1 = training[ -inTrain, ]
+```
+
+# Step 3: Cleaning the data
+
+First, we will identify variables with near zero variance and exclude them from the dataset. 
+```{r}
+NZV = nearZeroVar(training1, freqCut = 90/10, uniqueCut = 20, saveMetrics=TRUE)
+NZV_varaibles = names(training1) %in% c(rownames(NZV[NZV$nzv ==TRUE,]))
+training1_NZV = training1[!NZV_varaibles]
+```
+
+Identify and put aside variables with more than 90% NAs.
+```{r}
+na_thrhold = 0.9 # threshold for % of NA'S
+counter = numeric()
+for (i in 1:dim(training1_NZV)[2]){
+  if ( sum( is.na(training1_NZV[,i]) )/dim(training1_NZV)[1] >= na_thrhold )
+    counter = c(counter, i)
+}
+
+training1_NZV_NA = training1_NZV[,-counter]
+```
+
+Cleaning the testing dataset using the same criteria:
+```{r}
+testing1_NZV_NA = testing1[colnames(training1_NZV_NA)]
+``` 
+
+# Step 4: Fit Decision Tree model (DT)
+```{r}
+modFit_DT = rpart(classe ~ ., data = training1_NZV_NA[,-1], method = "class")
+```
+
+```{r, echo = FALSE}
+fancyRpartPlot(modFit_DT)
+``` 
+
+```{r}
+predict_DT = predict(modFit_DT, testing1_NZV_NA[,-1], type = "class")
+
+confusionMatrix(predict_DT, testing1_NZV_NA$classe)
+``` 
+
+
+Predict on the original testing set using DT:
+
+```{r}
+testing_NZV_NA = testing[,names(testing) %in% names(training1_NZV_NA)]
+predict_DT_test = predict(modFit_DT, testing_NZV_NA[,-1], type = "class")
+predict_DT_test
+```
+
+Fit Random Forest (RF)
+```{r}
+modFit_RF = randomForest(classe ~ ., data = training1_NZV_NA[,-1] )
+```
+
+```{r}
+predict_RF = predict(modFit_RF, testing1_NZV_NA[,-1], type = "class")
+confusionMatrix(predict_RF, testing1_NZV_NA$classe)
+```
+
+
+Predict on the original testing set using RF. To make sure that RandomForest prediction works with the Test data set coerce the data into the same type.
+```{r}
+for (i in 1:length(testing_NZV_NA) ) {
+  for(j in 1:length(training1_NZV_NA)) {
+    if( length( grep(names(training1_NZV_NA[i]), names(testing_NZV_NA)[j]) ) ==1)  {
+      class(testing_NZV_NA[j]) <- class(training1_NZV_NA[i])
+    }      
+  }      
+}
+
+## corce two data frames, i suspect it passes all the variable types and levels for factors, so they match for bpth data frames
+anyrow = 50
+testing_NZV_NA = rbind(training1_NZV_NA[anyrow, -56] , testing_NZV_NA) 
+testing_NZV_NA = testing_NZV_NA[-1,]
+
+predict_RF_test = predict(modFit_RF, testing_NZV_NA[,-1], type = "class")
+predict_DT_test
+```
+
+For submission purposes, the following function had been utilized to write predictions into separate files:
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predict_RF_test)
+```
+
+
