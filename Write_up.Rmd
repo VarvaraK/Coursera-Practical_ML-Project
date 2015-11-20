@@ -48,11 +48,13 @@ summary(training$cvtd_timestamp)
 I have omitted the report on each and every variable for the purpose of keeping the write up leaner.
 
 #Step 2: Partition the data 
+
 ```{r}
 inTrain = createDataPartition(y = training$classe, p = 0.6, list = FALSE)
 training1 = training[inTrain, ]
 testing1 = training[ -inTrain, ]
 ```
+This created a data partiotion with 60% data for training and 40% set aside for testing. 
 
 # Step 3: Cleaning the data
 
@@ -61,7 +63,9 @@ First, we will identify variables with near zero variance and exclude them from 
 NZV = nearZeroVar(training1, freqCut = 90/10, uniqueCut = 20, saveMetrics=TRUE)
 NZV_varaibles = names(training1) %in% c(rownames(NZV[NZV$nzv ==TRUE,]))
 training1_NZV = training1[!NZV_varaibles]
+dim(training1_NZV)
 ```
+The training set contains 11776 rows and 113 columns. 
 
 Identify and put aside variables with more than 90% NAs.
 ```{r}
@@ -73,7 +77,9 @@ for (i in 1:dim(training1_NZV)[2]){
 }
 
 training1_NZV_NA = training1_NZV[,-counter]
+dim(training1_NZV_NA)
 ```
+This leaves us with 54 variables excluding the index variable and response classe.
 
 Cleaning the testing dataset using the same criteria:
 ```{r}
