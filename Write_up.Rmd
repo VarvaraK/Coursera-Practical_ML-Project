@@ -151,9 +151,12 @@ testing_NZV_NA = rbind(training1_NZV_NA[anyrow, -56] , testing_NZV_NA)
 testing_NZV_NA = testing_NZV_NA[-1,]
 
 predict_RF_test = predict(modFit_RF, testing_NZV_NA[,-1], type = "class")
-predict_DT_test
 ```
+The final predictions are:
 
+1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+
+B  A  C  A  A  E  D  C  A  A  B  C  B  A  E  E  A  B  B  B 
 
 For submission purposes, the following function had been utilized to write predictions into separate files:
 ```{r}
