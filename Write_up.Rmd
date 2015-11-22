@@ -37,6 +37,7 @@ library(randomForest)
 #Step 1: Load the data and perform initial exploratory analysis
 
 ```{r}
+setwd("~/Documents/COURSEWORK/Coursera/Practical_ML/Project")
 training =  read.csv(file = "pml-training.csv", header = TRUE, na.strings=c("NA","#DIV/0!",""))
 testing =  read.csv(file = "pml-testing.csv", header = TRUE, na.strings=c("NA","#DIV/0!",""))
 
@@ -100,7 +101,7 @@ predict_DT = predict(modFit_DT, testing1_NZV_NA[,-1], type = "class")
 
 confusionMatrix(predict_DT, testing1_NZV_NA$classe)
 ``` 
-
+This results in an out of sample error of 1 - 0.8694 = 0.1306.
 
 Predict on the original testing set using DT:
 
@@ -108,7 +109,12 @@ Predict on the original testing set using DT:
 testing_NZV_NA = testing[,names(testing) %in% names(training1_NZV_NA)]
 predict_DT_test = predict(modFit_DT, testing_NZV_NA[,-1], type = "class")
 predict_DT_test
+## In sample error
+predict_DT_train = predict(modFit_DT, training1_NZV_NA[,-1], type = "class")
+confusionMatrix(predict_DT_train, training1_NZV_NA$classe)[3]
 ```
+In sample error was 1 - 0.8775 = 0.1225.
+
 
 Fit Random Forest (RF)
 ```{r}
@@ -119,7 +125,15 @@ modFit_RF = randomForest(classe ~ ., data = training1_NZV_NA[,-1] )
 predict_RF = predict(modFit_RF, testing1_NZV_NA[,-1], type = "class")
 confusionMatrix(predict_RF, testing1_NZV_NA$classe)
 ```
+Here the result accuracy have improved compare to the DT model. The out of sample error is 1 - 0.9983 = 0.0017 or 0.017%.
 
+```{r}
+predict_RF_train = predict(modFit_RF, training1_NZV_NA[,-1], type = "class")
+confusionMatrix(predict_RF_train, training1_NZV_NA$classe)
+```
+Accuracy is 100% of an in sample data, with the in sample error of 0%.
+
+Final Step: 
 
 Predict on the original testing set using RF. To make sure that RandomForest prediction works with the Test data set coerce the data into the same type.
 ```{r}
@@ -139,6 +153,7 @@ testing_NZV_NA = testing_NZV_NA[-1,]
 predict_RF_test = predict(modFit_RF, testing_NZV_NA[,-1], type = "class")
 predict_DT_test
 ```
+
 
 For submission purposes, the following function had been utilized to write predictions into separate files:
 ```{r}
